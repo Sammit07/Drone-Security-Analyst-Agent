@@ -252,8 +252,3 @@ Six SQLite tables (WAL mode, thread-local connections):
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | Yes | OpenAI API key with `gpt-4o-mini` access |
 
----
-
-## License
-
-MIT
