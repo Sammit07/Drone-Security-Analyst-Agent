@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DRONE-SEC · Tactical Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+/* ── Variables ─────────────────────────────────────────────────────────── */
+:root {
+  --bg-base:      #060d14;
+  --bg-panel:     #0a1520;
+  --bg-card:      #0d1e2e;
+  --bg-input:     #081018;
+  --border:       rgba(0,255,136,0.12);
+  --border-bright:rgba(0,255,136,0.35);
+  --green:        #00ff88;
+  --green-dim:    #00cc6a;
+  --green-muted:  rgba(0,255,136,0.4);
+  --cyan:         #00e5ff;
+  --amber:        #ffb300;
+  --red:          #ff3d3d;
+  --orange:       #ff6d00;
+  --blue:         #4fc3f7;
+  --text-primary: #c8e6d4;
+  --text-muted:   #4d7a62;
+  --text-dim:     #2a4a38;
+  --mono:         'JetBrains Mono', 'Courier New', monospace;
+  --sans:         'Inter', system-ui, sans-serif;
+  --glow-green:   0 0 12px rgba(0,255,136,0.3);
+  --glow-red:     0 0 12px rgba(255,61,61,0.4);
+  --radius:       4px;
+  --header-h:     52px;
+  --progress-h:   3px;
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: var(--bg-base); color: var(--text-primary); font-family: var(--sans); font-size: 13px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,255,136,0.2); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,255,136,0.4); }
+button { cursor: pointer; font-family: var(--mono); }
+input, textarea { font-family: var(--mono); }
+
+/* ── Scanline overlay ───────────────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+}
+
+/* ── Header ────────────────────────────────────────────────────────────── */
+#header {
+  height: var(--header-h);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 0 16px;
+  background: linear-gradient(180deg, #060f1a 0%, #050d14 100%);
+  border-bottom: 1px solid var(--border-bright);
+  position: relative;
+}
+#header::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--green-muted), transparent);
+}
+
+/* Logo */
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+}
+.logo-icon {
+  width: 28px; height: 28px;
+  border: 1px solid var(--green);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  box-shadow: var(--glow-green);
+}
+.logo-icon::before {
+  content: '';
+  position: absolute; width: 8px; height: 8px;
+  background: var(--green); border-radius: 50%;
+  box-shadow: var(--glow-green);
+}
+.logo-ring {
+  position: absolute; width: 18px; height: 18px;
+  border: 1px solid rgba(0,255,136,0.4); border-radius: 50%;
+}
+#logo-pulse {
+  animation: logo-spin 4s linear infinite;
+}
+@keyframes logo-spin {
+  to { transform: rotate(360deg); }
+}
+.logo h1 {
+  font-family: var(--mono); font-size: 13px; font-weight: 600;
+  letter-spacing: 3px; color: var(--green);
+  text-shadow: var(--glow-green);
+}
+.logo-sub { font-size: 9px; color: var(--text-muted); letter-spacing: 2px; }
+
+/* Status pills */
+#status-bar {
+  display: flex; gap: 6px; align-items: center; flex: 1; justify-content: center;
+}
+.status-pill {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 2px;
+  background: rgba(0,255,136,0.04);
+  border: 1px solid var(--border);
+  font-family: var(--mono); font-size: 10px; color: var(--text-muted);
+  white-space: nowrap;
+}
+.status-pill .val { color: var(--green); font-weight: 600; }
+.status-pill.alert-active .val { color: var(--amber); }
+#sim-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text-muted);
+  transition: background 0.3s;
+}
+#sim-dot.running { background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { opacity: 0.3; } }
+
+/* Control buttons */
+.ctrl-group { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.btn {
+  padding: 5px 14px; border-radius: var(--radius);
+  font-size: 11px; font-family: var(--mono); font-weight: 600;
+  letter-spacing: 1px; border: 1px solid;
+  transition: all 0.15s;
+}
+.btn-primary { background: rgba(0,255,136,0.08); color: var(--green); border-color: var(--green); }
+.btn-primary:hover:not(:disabled) { background: rgba(0,255,136,0.18); box-shadow: var(--glow-green); }
+.btn-danger  { background: rgba(255,61,61,0.08); color: var(--red); border-color: var(--red); }
+.btn-danger:hover:not(:disabled)  { background: rgba(255,61,61,0.18); box-shadow: var(--glow-red); }
+.btn-info    { background: rgba(79,195,247,0.08); color: var(--blue); border-color: var(--blue); }
+.btn-info:hover:not(:disabled)    { background: rgba(79,195,247,0.18); }
+.btn:disabled { opacity: 0.3; cursor: default; }
+#video-filename { font-size: 9px; color: var(--text-muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); }
+#video-file-input { display: none; }
+
+/* ── Progress bar ───────────────────────────────────────────────────────── */
+#progress-wrap {
+  height: var(--progress-h);
+  background: rgba(0,255,136,0.05);
+  position: relative;
+}
+#progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green), var(--cyan));
+  width: 0%;
+  transition: width 0.4s ease;
+  box-shadow: 0 0 8px var(--green);
+}
+#progress-pct {
+  position: absolute; right: 8px; top: 4px;
+  font-family: var(--mono); font-size: 9px; color: var(--text-muted);
+}
+
+/* ── Layout grid ────────────────────────────────────────────────────────── */
+#grid {
+  display: grid;
+  grid-template-columns: 340px 1fr 310px;
+  height: calc(100vh - var(--header-h) - var(--progress-h));
+  overflow: hidden;
+}
+
+/* ── Panel ──────────────────────────────────────────────────────────────── */
+.panel {
+  display: flex; flex-direction: column; overflow: hidden;
+  border-right: 1px solid var(--border);
+}
+.panel:last-child { border-right: none; }
+.panel-header {
+  padding: 7px 12px;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0;
+}
+.panel-header .ph-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--green); box-shadow: var(--glow-green);
+}
+.panel-title {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 2.5px;
+  color: var(--green-dim); font-weight: 600;
+}
+.panel-badge {
+  margin-left: auto;
+  font-family: var(--mono); font-size: 9px;
+  padding: 1px 6px; border-radius: 2px;
+  background: rgba(0,255,136,0.08); color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.panel-body { flex: 1; overflow-y: auto; padding: 10px; }
+
+/* ── LEFT PANEL ─────────────────────────────────────────────────────────── */
+/* Video feed */
+#video-frame {
+  position: relative;
+  aspect-ratio: 16/9;
+  background: #000;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+#video-frame img {
+  width: 100%; height: 100%; object-fit: contain; display: none;
+}
+#frame-placeholder {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px;
+}
+.placeholder-radar {
+  position: relative; width: 80px; height: 80px;
+}
+.radar-ring {
+  position: absolute; border: 1px solid;
+  border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%,-50%);
+}
+.radar-ring:nth-child(1) { width: 80px; height: 80px; border-color: rgba(0,255,136,0.08); }
+.radar-ring:nth-child(2) { width: 54px; height: 54px; border-color: rgba(0,255,136,0.12); }
+.radar-ring:nth-child(3) { width: 28px; height: 28px; border-color: rgba(0,255,136,0.18); }
+.radar-sweep {
+  position: absolute; width: 50%; height: 1px;
+  background: linear-gradient(90deg, rgba(0,255,136,0.6), transparent);
+  top: 50%; left: 50%; transform-origin: left center;
+  animation: sweep 3s linear infinite;
+}
+@keyframes sweep { to { transform: rotate(360deg); } }
+.placeholder-text { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 2px; }
+
+/* Frame overlay HUD */
+#frame-hud {
+  position: absolute; top: 6px; left: 6px; right: 6px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  pointer-events: none;
+}
+.hud-corner {
+  font-family: var(--mono); font-size: 9px; color: rgba(0,255,136,0.7);
+  background: rgba(0,0,0,0.6); padding: 3px 6px; border-radius: 2px;
+  backdrop-filter: blur(4px);
+}
+#frame-active-indicator {
+  position: absolute; bottom: 6px; right: 6px;
+  display: none; align-items: center; gap: 5px;
+  background: rgba(0,0,0,0.7); padding: 3px 8px; border-radius: 2px;
+  font-family: var(--mono); font-size: 9px; color: var(--red);
+}
+#frame-active-indicator .rec-dot {
+  width: 6px; height: 6px; background: var(--red); border-radius: 50%;
+  animation: blink 1s step-end infinite;
+}
+#frame-active-indicator.visible { display: flex; }
+
+/* Frame meta strip */
+#frame-meta {
+  display: flex; gap: 0; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.meta-cell {
+  flex: 1; padding: 5px 8px; text-align: center;
+  border-right: 1px solid var(--border);
+  font-family: var(--mono); font-size: 9px;
+}
+.meta-cell:last-child { border-right: none; }
+.meta-label { color: var(--text-muted); margin-bottom: 2px; }
+.meta-value { color: var(--green); font-weight: 600; }
+
+/* VLM section */
+.vlm-block { margin-bottom: 10px; }
+.section-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 2px;
+  color: var(--text-muted); margin-bottom: 5px;
+  display: flex; align-items: center; gap: 6px;
+}
+.section-label::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+#vlm-description {
+  font-size: 11px; line-height: 1.65; color: var(--text-primary);
+  border-left: 2px solid rgba(0,255,136,0.2);
+  padding-left: 8px; font-family: var(--sans);
+}
+.tag {
+  display: inline-block; border-radius: 2px;
+  font-family: var(--mono); font-size: 9px; padding: 2px 7px;
+  margin: 2px; border: 1px solid;
+}
+.tag-obj   { background: rgba(0,255,136,0.05); color: #00ffaa; border-color: rgba(0,255,136,0.2); }
+.tag-anom  { background: rgba(255,109,0,0.08); color: #ffaa44; border-color: rgba(255,109,0,0.25); }
+.tag-label { background: rgba(79,195,247,0.06); color: #88ccff; border-color: rgba(79,195,247,0.2); }
+
+/* ── Severity badges ─────────────────────────────────────────────────────── */
+.sev {
+  display: inline-block; font-family: var(--mono); font-size: 9px; font-weight: 600;
+  padding: 2px 8px; border-radius: 2px; letter-spacing: 1px; border: 1px solid;
+}
+.sev-low      { background: rgba(0,255,0,0.05);   color: #00ff66; border-color: rgba(0,255,0,0.2); }
+.sev-medium   { background: rgba(255,179,0,0.08); color: #ffb300; border-color: rgba(255,179,0,0.25); }
+.sev-high     { background: rgba(255,109,0,0.1);  color: #ff6d00; border-color: rgba(255,109,0,0.3); }
+.sev-critical { background: rgba(255,61,61,0.12); color: #ff3d3d; border-color: rgba(255,61,61,0.35); box-shadow: 0 0 8px rgba(255,61,61,0.2); }
+
+/* ── CENTRE PANEL ───────────────────────────────────────────────────────── */
+/* Search */
+#search-section {
+  display: flex; gap: 6px; padding: 8px 10px;
+  background: rgba(0,0,0,0.2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#search-input {
+  flex: 1; background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--green); padding: 5px 10px; font-size: 11px; outline: none;
+  border-radius: var(--radius); transition: border-color 0.2s;
+}
+#search-input:focus { border-color: var(--green-muted); }
+#search-input::placeholder { color: var(--text-dim); }
+#search-btn {
+  background: rgba(0,255,136,0.06); color: var(--green-dim);
+  border: 1px solid var(--border); padding: 5px 12px;
+  font-size: 10px; border-radius: var(--radius); letter-spacing: 1px;
+  transition: all 0.15s;
+}
+#search-btn:hover { background: rgba(0,255,136,0.14); border-color: var(--green-muted); }
+#search-results {
+  padding: 0 10px 6px; font-size: 10px; color: var(--green-dim);
+  max-height: 72px; overflow-y: auto; flex-shrink: 0;
+}
+.search-hit {
+  display: flex; gap: 10px; padding: 3px 6px; cursor: pointer;
+  border-bottom: 1px solid var(--border); border-radius: 2px;
+  transition: background 0.1s;
+}
+.search-hit:hover { background: rgba(0,255,136,0.05); }
+
+/* Chain log */
+#chain-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+#chain-log  { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+
+.chain-entry {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--green-muted);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  animation: slideIn 0.2s ease;
+  transition: border-left-color 0.3s;
+}
+@keyframes slideIn { from { opacity:0; transform: translateY(6px); } }
+.chain-entry.action-ALERT    { border-left-color: var(--amber); }
+.chain-entry.action-ESCALATE { border-left-color: var(--red); }
+.chain-entry.action-CLEAR    { border-left-color: var(--blue); }
+.chain-entry.action-MONITOR  { border-left-color: var(--green-muted); }
+
+.chain-header {
+  display: flex; gap: 8px; align-items: center; margin-bottom: 5px; flex-wrap: wrap;
+}
+.chain-ts   { font-family: var(--mono); font-size: 9px; color: var(--text-muted); }
+.action-tag {
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  padding: 2px 8px; border-radius: 2px; border: 1px solid; letter-spacing: 1px;
+}
+.action-tag-MONITOR  { background:rgba(0,255,136,0.08); color:var(--green);  border-color:rgba(0,255,136,0.25); }
+.action-tag-ALERT    { background:rgba(255,179,0,0.08); color:var(--amber);  border-color:rgba(255,179,0,0.25); }
+.action-tag-ESCALATE { background:rgba(255,61,61,0.1);  color:var(--red);    border-color:rgba(255,61,61,0.3); }
+.action-tag-CLEAR    { background:rgba(79,195,247,0.08);color:var(--blue);   border-color:rgba(79,195,247,0.25); }
+.chain-conf { font-family: var(--mono); font-size: 9px; color: var(--text-muted); margin-left: auto; }
+
+.chain-reasoning { font-size: 11px; line-height: 1.6; color: var(--text-primary); }
+.chain-rec {
+  font-size: 10px; color: var(--text-muted); margin-top: 4px;
+  font-style: italic; padding-left: 8px; border-left: 1px solid var(--border);
+}
+
+/* Telemetry strip */
+#telem-strip {
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  border-top: 1px solid var(--border);
+  background: rgba(0,0,0,0.3); flex-shrink: 0;
+}
+.telem-cell {
+  padding: 6px 8px; text-align: center;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+.telem-cell:last-child { border-right: none; }
+.telem-label { font-family: var(--mono); font-size: 8px; color: var(--text-muted); margin-bottom: 2px; letter-spacing: 1px; }
+.telem-val   { font-family: var(--mono); font-size: 11px; color: var(--cyan); font-weight: 600; }
+.telem-bar {
+  height: 2px; background: rgba(0,229,255,0.1); margin-top: 3px; border-radius: 1px; overflow: hidden;
+}
+.telem-bar-fill { height: 100%; background: var(--cyan); border-radius: 1px; transition: width 0.5s; }
+
+/* ── RIGHT PANEL ─────────────────────────────────────────────────────────── */
+/* Alert list */
+#alerts-section { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+#alerts-list    { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+#alerts-empty   { text-align: center; font-family: var(--mono); font-size: 10px; color: var(--text-dim); padding: 20px 0; }
+
+.alert-item {
+  background: var(--bg-card);
+  border: 1px solid rgba(255,109,0,0.2);
+  border-left: 3px solid var(--orange);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  animation: alertIn 0.25s ease;
+  transition: opacity 0.3s;
+}
+@keyframes alertIn { from { opacity:0; transform: translateX(8px); } }
+.alert-item.sev-critical { border-left-color: var(--red); border-color: rgba(255,61,61,0.25); background: rgba(255,61,61,0.04); }
+.alert-item.sev-high     { border-left-color: var(--orange); }
+.alert-item.sev-medium   { border-left-color: var(--amber); }
+.alert-item.acked        { opacity: 0.35; }
+
+.alert-header { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; flex-wrap: wrap; }
+.alert-type   { font-family: var(--mono); font-size: 10px; font-weight: 600; color: #ffaa44; }
+.alert-ts     { font-family: var(--mono); font-size: 9px; color: var(--text-muted); margin-left: auto; }
+.alert-desc   { font-size: 11px; color: var(--text-primary); line-height: 1.5; }
+.ack-btn {
+  margin-top: 5px;
+  background: rgba(255,109,0,0.06); color: rgba(255,109,0,0.6);
+  border: 1px solid rgba(255,109,0,0.2); padding: 2px 10px;
+  font-size: 9px; border-radius: 2px; letter-spacing: 1px;
+  transition: all 0.15s;
+}
+.ack-btn:hover  { background: rgba(255,109,0,0.15); color: var(--amber); }
+.ack-btn:disabled { opacity: 0.3; cursor: default; }
+
+@keyframes flashAlert {
+  0%,100% { box-shadow: none; }
+  50%      { box-shadow: 0 0 16px rgba(255,61,61,0.4); }
+}
+.alert-flash { animation: flashAlert 0.7s 3; }
+
+/* Divider between alerts and Q&A */
+.panel-divider {
+  height: 1px; background: var(--border); flex-shrink: 0;
+  position: relative;
+}
+.panel-divider::before {
+  content: 'Q&A'; position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-panel); padding: 0 8px;
+  font-family: var(--mono); font-size: 8px; letter-spacing: 2px; color: var(--text-muted);
+}
+
+/* Q&A section */
+#qa-section {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px 10px 10px; flex-shrink: 0;
+  max-height: 42%;
+}
+#qa-input {
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-primary); padding: 7px 10px; font-size: 11px;
+  outline: none; resize: none; height: 52px; border-radius: var(--radius);
+  line-height: 1.5; transition: border-color 0.2s;
+}
+#qa-input:focus { border-color: var(--green-muted); }
+#qa-input::placeholder { color: var(--text-dim); }
+#qa-submit {
+  background: rgba(0,255,136,0.06); color: var(--green);
+  border: 1px solid var(--green-muted); padding: 6px;
+  font-size: 10px; letter-spacing: 1.5px; border-radius: var(--radius);
+  transition: all 0.15s;
+}
+#qa-submit:hover { background: rgba(0,255,136,0.14); box-shadow: var(--glow-green); }
+#qa-answer {
+  flex: 1; overflow-y: auto;
+  background: var(--bg-input); border: 1px solid var(--border);
+  padding: 8px 10px; border-radius: var(--radius);
+  font-size: 11px; line-height: 1.65; color: var(--text-primary);
+  min-height: 60px;
+}
+.qa-thinking { color: var(--text-muted); font-style: italic; }
+
+/* ── Summary bar (bottom of right panel) ───────────────────────────────── */
+#summary-bar {
+  padding: 6px 10px; border-top: 1px solid var(--border);
+  display: flex; gap: 6px; align-items: center; flex-shrink: 0;
+}
+#btn-summarize {
+  background: rgba(79,195,247,0.06); color: var(--blue);
+  border: 1px solid rgba(79,195,247,0.25); padding: 4px 12px;
+  font-size: 9px; letter-spacing: 1px; border-radius: 2px;
+  transition: all 0.15s; white-space: nowrap;
+}
+#btn-summarize:hover { background: rgba(79,195,247,0.14); }
+#summary-text {
+  font-size: 10px; color: var(--text-muted); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; flex: 1;
+  font-style: italic;
+}
+
+/* ── Toast notifications ─────────────────────────────────────────────────── */
+#toast-container {
+  position: fixed; top: 60px; right: 14px;
+  display: flex; flex-direction: column; gap: 6px; z-index: 10000;
+  pointer-events: none;
+}
+.toast {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 8px 14px;
+  font-family: var(--mono); font-size: 11px; color: var(--text-primary);
+  pointer-events: auto; max-width: 280px;
+  animation: toastIn 0.2s ease;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+.toast.toast-error  { border-left: 3px solid var(--red); color: #ff9999; }
+.toast.toast-warn   { border-left: 3px solid var(--amber); }
+.toast.toast-info   { border-left: 3px solid var(--blue); }
+.toast.toast-out    { animation: toastOut 0.2s ease forwards; }
+@keyframes toastIn  { from { opacity:0; transform: translateX(20px); } }
+@keyframes toastOut { to   { opacity:0; transform: translateX(20px); } }
+
+/* ── Stat boxes in alerts header ─────────────────────────────────────────── */
+#alerts-stats {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 0; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.stat-cell {
+  padding: 6px 4px; text-align: center;
+  border-right: 1px solid var(--border);
+}
+.stat-cell:last-child { border-right: none; }
+.stat-num   { font-family: var(--mono); font-size: 16px; font-weight: 600; }
+.stat-label { font-family: var(--mono); font-size: 8px; color: var(--text-muted); letter-spacing: 1px; margin-top: 1px; }
+.stat-cell.crit .stat-num { color: var(--red); }
+.stat-cell.high .stat-num { color: var(--orange); }
+.stat-cell.med  .stat-num { color: var(--amber); }
+.stat-cell.low  .stat-num { color: var(--green); }
+</style>
+</head>
+<body>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Header -->
+<header id="header">
+  <div class="logo">
+    <div class="logo-icon">
+      <div class="logo-ring" id="logo-pulse"></div>
+    </div>
+    <div>
+      <h1>DRONE-SEC</h1>
+      <div class="logo-sub">TACTICAL SURVEILLANCE SYSTEM</div>
+    </div>
+  </div>
+
+  <div id="status-bar">
+    <div class="status-pill">
+      <div id="sim-dot"></div>
+      SIM:&nbsp;<span class="val" id="sim-status">IDLE</span>
+    </div>
+    <div class="status-pill">
+      FRAME:&nbsp;<span class="val" id="frame-counter">—</span>
+    </div>
+    <div class="status-pill" id="alert-pill">
+      ALERTS:&nbsp;<span class="val" id="alert-counter">0</span>
+    </div>
+    <div class="status-pill">
+      CLIENTS:&nbsp;<span class="val" id="client-count">—</span>
+    </div>
+  </div>
+
+  <div class="ctrl-group">
+    <button class="btn btn-primary" id="btn-start" onclick="startSim()">▶ START</button>
+    <button class="btn btn-danger"  id="btn-stop"  onclick="stopSim()" disabled>■ STOP</button>
+    <input id="video-file-input" type="file" accept=".mp4,.avi,.mov,.mkv,.webm,.m4v,.flv" onchange="onVideoSelected(event)"/>
+    <button class="btn btn-info" id="btn-video" onclick="document.getElementById('video-file-input').click()">⏫ UPLOAD</button>
+    <span id="video-filename">no file</span>
+  </div>
+</header>
+
+<!-- Progress -->
+<div id="progress-wrap">
+  <div id="progress-bar"></div>
+</div>
+
+<!-- Grid -->
+<div id="grid">
+
+  <!-- LEFT: Live feed + VLM -->
+  <div class="panel" id="panel-left">
+    <div class="panel-header">
+      <div class="ph-dot"></div>
+      <span class="panel-title">LIVE FEED · VLM ANALYSIS</span>
+      <span class="panel-badge" id="feed-badge">STANDBY</span>
+    </div>
+
+    <div id="video-frame">
+      <div id="frame-placeholder">
+        <div class="placeholder-radar">
+          <div class="radar-ring"></div>
+          <div class="radar-ring"></div>
+          <div class="radar-ring"></div>
+          <div class="radar-sweep"></div>
+        </div>
+        <div class="placeholder-text">AWAITING FEED</div>
+      </div>
+      <img id="live-img" src="" alt=""/>
+      <div id="frame-hud">
+        <span class="hud-corner" id="hud-ts">--:--</span>
+        <span class="hud-corner" id="hud-frm">FRM --</span>
+      </div>
+      <div id="frame-active-indicator">
+        <div class="rec-dot"></div>LIVE
+      </div>
+    </div>
+
+    <div id="frame-meta">
+      <div class="meta-cell">
+        <div class="meta-label">TIMESTAMP</div>
+        <div class="meta-value" id="meta-ts">--:--</div>
+      </div>
+      <div class="meta-cell">
+        <div class="meta-label">FRAME</div>
+        <div class="meta-value" id="meta-idx">--</div>
+      </div>
+      <div class="meta-cell">
+        <div class="meta-label">LIGHTING</div>
+        <div class="meta-value" id="meta-lt">--</div>
+      </div>
+      <div class="meta-cell">
+        <div class="meta-label">SEVERITY</div>
+        <div class="meta-value" id="meta-sev">--</div>
+      </div>
+    </div>
+
+    <div class="panel-body" id="vlm-section">
+      <div class="vlm-block">
+        <div class="section-label">SCENE DESCRIPTION</div>
+        <div id="vlm-description">Awaiting frame analysis…</div>
+      </div>
+      <div class="vlm-block">
+        <div class="section-label">DETECTED OBJECTS</div>
+        <div id="vlm-objects"></div>
+      </div>
+      <div class="vlm-block">
+        <div class="section-label">ANOMALIES</div>
+        <div id="vlm-anomalies"></div>
+      </div>
+      <div class="vlm-block">
+        <div class="section-label">SCENE TAGS</div>
+        <div id="vlm-tags"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTRE: Reasoning log -->
+  <div class="panel" id="panel-centre">
+    <div class="panel-header">
+      <div class="ph-dot"></div>
+      <span class="panel-title">AGENT CHAIN-OF-THOUGHT</span>
+      <span class="panel-badge" id="chain-count">0 entries</span>
+    </div>
+
+    <div id="search-section">
+      <input id="search-input" type="text" placeholder="Search frames… e.g. vehicle, gate, intruder"/>
+      <button id="search-btn" onclick="searchFrames()">SEARCH</button>
+    </div>
+    <div id="search-results"></div>
+
+    <div id="chain-wrap">
+      <div id="chain-log"></div>
+    </div>
+
+    <div id="telem-strip">
+      <div class="telem-cell">
+        <div class="telem-label">ALT</div>
+        <div class="telem-val" id="t-alt">--</div>
+        <div class="telem-bar"><div class="telem-bar-fill" id="tb-alt" style="width:0%"></div></div>
+      </div>
+      <div class="telem-cell">
+        <div class="telem-label">SPD</div>
+        <div class="telem-val" id="t-spd">--</div>
+        <div class="telem-bar"><div class="telem-bar-fill" id="tb-spd" style="width:0%"></div></div>
+      </div>
+      <div class="telem-cell">
+        <div class="telem-label">LAT</div>
+        <div class="telem-val" id="t-lat">--</div>
+        <div class="telem-bar"><div class="telem-bar-fill" style="width:50%"></div></div>
+      </div>
+      <div class="telem-cell">
+        <div class="telem-label">LON</div>
+        <div class="telem-val" id="t-lon">--</div>
+        <div class="telem-bar"><div class="telem-bar-fill" style="width:50%"></div></div>
+      </div>
+      <div class="telem-cell">
+        <div class="telem-label">BAT %</div>
+        <div class="telem-val" id="t-bat">--</div>
+        <div class="telem-bar"><div class="telem-bar-fill" id="tb-bat" style="width:0%"></div></div>
+      </div>
+      <div class="telem-cell">
+        <div class="telem-label">HDG °</div>
+        <div class="telem-val" id="t-hdg">--</div>
+        <div class="telem-bar"><div class="telem-bar-fill" id="tb-hdg" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Alerts + Q&A -->
+  <div class="panel" id="panel-right">
+    <div class="panel-header">
+      <div class="ph-dot" style="background:var(--amber);box-shadow:0 0 6px var(--amber)"></div>
+      <span class="panel-title">ALERTS &amp; INTEL</span>
+      <span class="panel-badge" id="unacked-badge">0 unacked</span>
+    </div>
+
+    <!-- Mini severity stats -->
+    <div id="alerts-stats">
+      <div class="stat-cell crit">
+        <div class="stat-num" id="cnt-crit">0</div>
+        <div class="stat-label">CRITICAL</div>
+      </div>
+      <div class="stat-cell high">
+        <div class="stat-num" id="cnt-high">0</div>
+        <div class="stat-label">HIGH</div>
+      </div>
+      <div class="stat-cell med">
+        <div class="stat-num" id="cnt-med">0</div>
+        <div class="stat-label">MEDIUM</div>
+      </div>
+      <div class="stat-cell low">
+        <div class="stat-num" id="cnt-low">0</div>
+        <div class="stat-label">LOW</div>
+      </div>
+    </div>
+
+    <div id="alerts-section">
+      <div id="alerts-list">
+        <div id="alerts-empty">No alerts triggered yet.</div>
+      </div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <div id="qa-section">
+      <textarea id="qa-input" placeholder="Ask the agent… e.g. 'What happened at 01:10?'&#10;Ctrl+Enter to send"></textarea>
+      <button id="qa-submit" onclick="sendQA()">▶ SEND QUERY</button>
+      <div id="qa-answer"><span class="qa-thinking">Agent answers appear here…</span></div>
+    </div>
+
+    <div id="summary-bar">
+      <button id="btn-summarize" onclick="getSummary()">⚡ SUMMARIZE</button>
+      <div id="summary-text">—</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ── State ────────────────────────────────────────────────────────────── */
+const API = '';
+let evtSource  = null;
+let frameCount = 0;
+let alertCount = 0;
+let simRunning = false;
+let chainCount = 0;
+let sevCounts  = { critical:0, high:0, medium:0, low:0 };
+let unacked    = 0;
+let totalFrames = 30;
+
+/* ── Toast ────────────────────────────────────────────────────────────── */
+function toast(msg, type='info', dur=3500) {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('toast-out');
+    setTimeout(() => el.remove(), 250);
+  }, dur);
+}
+
+/* ── SSE ──────────────────────────────────────────────────────────────── */
+function connectSSE() {
+  if (evtSource) evtSource.close();
+  evtSource = new EventSource(`${API}/api/stream`);
+  evtSource.onmessage = (e) => {
+    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+    handleEvent(msg);
+  };
+  evtSource.onerror = () => {
+    document.getElementById('sim-status').textContent = 'DISCONNECTED';
+    setTimeout(connectSSE, 3000);
+  };
+}
+
+function handleEvent(msg) {
+  switch (msg.type) {
+    case 'connected': pollHealth(); break;
+    case 'sim_start':
+      setSimUI(true);
+      totalFrames = 30;
+      document.getElementById('frame-counter').textContent = `0 / 30`;
+      clearLog(); break;
+    case 'frame': handleFrame(msg); break;
+    case 'sim_complete':
+    case 'sim_stopped':
+      setSimUI(false);
+      document.getElementById('frame-active-indicator').classList.remove('visible');
+      break;
+  }
+}
+
+/* ── Frame handler ────────────────────────────────────────────────────── */
+function handleFrame(msg) {
+  frameCount++;
+  const total = totalFrames || 30;
+  const idx1  = msg.frame_index + 1;
+  const pct   = Math.round(idx1 / total * 100);
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('frame-counter').textContent = `${idx1} / ${total}`;
+
+  // Live image
+  const img = document.getElementById('live-img');
+  if (msg.image_b64) {
+    img.src = `data:image/png;base64,${msg.image_b64}`;
+    img.style.display = 'block';
+    document.getElementById('frame-placeholder').style.display = 'none';
+    document.getElementById('frame-active-indicator').classList.add('visible');
+    document.getElementById('feed-badge').textContent = 'LIVE';
+    document.getElementById('feed-badge').style.color = 'var(--green)';
+  }
+
+  // HUD overlays
+  document.getElementById('hud-ts').textContent  = msg.timestamp || '--:--';
+  document.getElementById('hud-frm').textContent = `FRM ${msg.frame_index}`;
+
+  // Meta strip
+  document.getElementById('meta-ts').textContent = msg.timestamp || '--:--';
+  document.getElementById('meta-idx').textContent = msg.frame_index;
+  document.getElementById('meta-lt').textContent  = (msg.lighting || 'DAY').toUpperCase();
+  const sev = msg.severity || 'low';
+  document.getElementById('meta-sev').innerHTML = `<span class="sev sev-${sev}">${sev.toUpperCase()}</span>`;
+
+  // VLM
+  document.getElementById('vlm-description').textContent = msg.scene_description || '—';
+
+  const objDiv  = document.getElementById('vlm-objects');
+  const anomDiv = document.getElementById('vlm-anomalies');
+  const tagDiv  = document.getElementById('vlm-tags');
+  objDiv.innerHTML = anomDiv.innerHTML = tagDiv.innerHTML = '';
+
+  (msg.objects || []).forEach(o => {
+    const t = document.createElement('span');
+    t.className = 'tag tag-obj';
+    t.textContent = `${o.type} · ${o.color} · ${o.location} (${(o.confidence*100).toFixed(0)}%)`;
+    objDiv.appendChild(t);
+  });
+  (msg.anomalies || []).forEach(a => {
+    const t = document.createElement('span');
+    t.className = 'tag tag-anom'; t.textContent = a;
+    anomDiv.appendChild(t);
+  });
+  (msg.tags || []).forEach(tag => {
+    const t = document.createElement('span');
+    t.className = 'tag tag-label'; t.textContent = tag;
+    tagDiv.appendChild(t);
+  });
+
+  appendChainEntry(msg);
+
+  // Telemetry
+  if (msg.telemetry) {
+    const te = msg.telemetry;
+    document.getElementById('t-alt').textContent = `${te.altitude_m}m`;
+    document.getElementById('t-spd').textContent = `${te.speed_ms}`;
+    document.getElementById('t-lat').textContent = te.latitude;
+    document.getElementById('t-lon').textContent = te.longitude;
+    document.getElementById('t-bat').textContent = `${te.battery_pct}`;
+    document.getElementById('t-hdg').textContent = `${te.heading_deg}`;
+    document.getElementById('tb-alt').style.width = Math.min(te.altitude_m / 120 * 100, 100) + '%';
+    document.getElementById('tb-spd').style.width = Math.min(te.speed_ms / 20 * 100, 100) + '%';
+    document.getElementById('tb-bat').style.width = te.battery_pct + '%';
+    document.getElementById('tb-hdg').style.width = (te.heading_deg / 360 * 100) + '%';
+  }
+
+  if (msg.alert) appendAlert(msg.alert, msg.timestamp, msg.frame_index);
+}
+
+/* ── Chain log ────────────────────────────────────────────────────────── */
+function appendChainEntry(msg) {
+  const log    = document.getElementById('chain-log');
+  const action = msg.agent_action || 'MONITOR';
+  const conf   = ((msg.agent_confidence || 0.5) * 100).toFixed(0);
+  const sev    = msg.severity || 'low';
+
+  chainCount++;
+  document.getElementById('chain-count').textContent = `${chainCount} entries`;
+
+  const div = document.createElement('div');
+  div.className = `chain-entry action-${action}`;
+  div.innerHTML = `
+    <div class="chain-header">
+      <span class="chain-ts">T=${escHtml(msg.timestamp||'?')} · FRM#${msg.frame_index}</span>
+      <span class="action-tag action-tag-${action}">${action}</span>
+      <span class="sev sev-${sev}">${sev.toUpperCase()}</span>
+      <span class="chain-conf">conf ${conf}%</span>
+    </div>
+    <div class="chain-reasoning">${escHtml(msg.agent_reasoning || 'No reasoning provided.')}</div>
+    ${msg.agent_recommendation ? `<div class="chain-rec">→ ${escHtml(msg.agent_recommendation)}</div>` : ''}`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('chain-log').innerHTML = '';
+  document.getElementById('alerts-list').innerHTML = '<div id="alerts-empty">No alerts triggered yet.</div>';
+  alertCount = frameCount = chainCount = unacked = 0;
+  sevCounts = { critical:0, high:0, medium:0, low:0 };
+  document.getElementById('alert-counter').textContent = '0';
+  document.getElementById('chain-count').textContent = '0 entries';
+  document.getElementById('unacked-badge').textContent = '0 unacked';
+  document.getElementById('progress-bar').style.width = '0%';
+  ['cnt-crit','cnt-high','cnt-med','cnt-low'].forEach(id => document.getElementById(id).textContent = '0');
+}
+
+/* ── Alerts ───────────────────────────────────────────────────────────── */
+function appendAlert(alert, ts, frameIdx) {
+  alertCount++;
+  document.getElementById('alert-counter').textContent = alertCount;
+  document.getElementById('alert-pill').classList.add('alert-active');
+
+  const sev = alert.severity || 'medium';
+  const key = sev === 'critical' ? 'critical' : sev === 'high' ? 'high' : sev === 'medium' ? 'medium' : 'low';
+  sevCounts[key]++;
+  document.getElementById('cnt-crit').textContent = sevCounts.critical;
+  document.getElementById('cnt-high').textContent = sevCounts.high;
+  document.getElementById('cnt-med').textContent  = sevCounts.medium;
+  document.getElementById('cnt-low').textContent  = sevCounts.low;
+
+  unacked++;
+  document.getElementById('unacked-badge').textContent = `${unacked} unacked`;
+
+  // Remove empty placeholder
+  const empty = document.getElementById('alerts-empty');
+  if (empty) empty.remove();
+
+  const list = document.getElementById('alerts-list');
+  const div  = document.createElement('div');
+  div.className = `alert-item sev-${sev} alert-flash`;
+  div.id = `alert-${alert.id || Date.now()}`;
+  div.innerHTML = `
+    <div class="alert-header">
+      <span class="alert-type">⚠ ${escHtml(alert.type || 'ALERT')}</span>
+      <span class="sev sev-${sev}">${sev.toUpperCase()}</span>
+      <span class="alert-ts">${escHtml(ts)} · FRM#${frameIdx}</span>
+    </div>
+    <div class="alert-desc">${escHtml(alert.description || '')}</div>
+    <button class="ack-btn" onclick="ackAlert(${alert.id}, this)">ACK</button>`;
+  list.insertBefore(div, list.firstChild);
+
+  if (sev === 'critical') toast(`CRITICAL: ${alert.type || 'Alert'} at ${ts}`, 'error', 5000);
+  else if (sev === 'high') toast(`HIGH: ${alert.type || 'Alert'} at ${ts}`, 'warn', 4000);
+}
+
+async function ackAlert(alertId, btn) {
+  btn.disabled = true;
+  if (alertId) {
+    try {
+      await fetch(`${API}/api/alerts/${alertId}/ack`, { method: 'POST' });
+    } catch(e) { /* ignore */ }
+  }
+  btn.closest('.alert-item').classList.add('acked');
+  unacked = Math.max(0, unacked - 1);
+  document.getElementById('unacked-badge').textContent = `${unacked} unacked`;
+}
+
+/* ── Sim controls ─────────────────────────────────────────────────────── */
+async function startSim() {
+  try {
+    const r = await fetch(`${API}/api/simulate/start`, { method: 'POST' });
+    const d = await r.json();
+    if (r.ok) setSimUI(true);
+    else toast(d.detail || JSON.stringify(d), 'error');
+  } catch(e) { toast('Start failed: ' + e.message, 'error'); }
+}
+
+async function stopSim() {
+  try {
+    await fetch(`${API}/api/simulate/stop`, { method: 'POST' });
+    setSimUI(false);
+  } catch(e) { toast('Stop failed: ' + e.message, 'error'); }
+}
+
+function setSimUI(running) {
+  simRunning = running;
+  document.getElementById('btn-start').disabled = running;
+  document.getElementById('btn-stop').disabled  = !running;
+  document.getElementById('btn-video').disabled = running;
+  document.getElementById('sim-status').textContent = running ? 'RUNNING' : 'IDLE';
+  const dot = document.getElementById('sim-dot');
+  dot.classList.toggle('running', running);
+}
+
+/* ── Video upload ─────────────────────────────────────────────────────── */
+let _pendingVideoFile = null;
+
+function onVideoSelected(event) {
+  const f = event.target.files[0];
+  if (!f) return;
+  _pendingVideoFile = f;
+  document.getElementById('video-filename').textContent = f.name;
+  uploadVideo();
+}
+
+async function uploadVideo() {
+  if (!_pendingVideoFile) { toast('No file selected.', 'warn'); return; }
+  const fd = new FormData();
+  fd.append('file', _pendingVideoFile);
+  try {
+    setSimUI(true); clearLog();
+    document.getElementById('sim-status').textContent = 'UPLOADING…';
+    const r  = await fetch(`${API}/api/video/upload?max_frames=30`, { method:'POST', body:fd });
+    const d  = await r.json();
+    if (!r.ok) { setSimUI(false); toast(`Upload failed: ${d.detail || JSON.stringify(d)}`, 'error'); return; }
+    totalFrames = d.total_frames || 30;
+    document.getElementById('frame-counter').textContent = `0 / ${totalFrames}`;
+  } catch(e) { setSimUI(false); toast('Upload error: ' + e.message, 'error'); }
+}
+
+/* ── Search ───────────────────────────────────────────────────────────── */
+async function searchFrames() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+  const rd = document.getElementById('search-results');
+  rd.innerHTML = '<span style="color:var(--text-muted)">Searching…</span>';
+  try {
+    const r = await fetch(`${API}/api/frames?search=${encodeURIComponent(q)}&limit=10`);
+    const d = await r.json();
+    if (!d.frames?.length) { rd.innerHTML = '<span style="color:var(--text-dim)">No matches.</span>'; return; }
+    rd.innerHTML = d.frames.map(f =>
+      `<div class="search-hit" onclick="loadFrameDetail(${f.frame_index})">
+        <span style="color:var(--green);font-family:var(--mono)">FRM#${f.frame_index}</span>
+        <span style="color:var(--text-muted);font-family:var(--mono)">${f.timestamp_str}</span>
+        <span style="color:var(--text-primary)">${escHtml((f.scene_description||'').slice(0,55))}</span>
+      </div>`).join('');
+  } catch(e) { rd.innerHTML = `<span style="color:var(--red)">${e.message}</span>`; }
+}
+
+async function loadFrameDetail(idx) {
+  try {
+    const r = await fetch(`${API}/api/frames/${idx}`);
+    const f = await r.json();
+    if (f.image_b64) {
+      const img = document.getElementById('live-img');
+      img.src = `data:image/png;base64,${f.image_b64}`;
+      img.style.display = 'block';
+      document.getElementById('frame-placeholder').style.display = 'none';
+    }
+    document.getElementById('meta-ts').textContent  = f.timestamp_str;
+    document.getElementById('meta-idx').textContent = f.frame_index;
+    document.getElementById('meta-lt').textContent  = (f.lighting||'').toUpperCase();
+    document.getElementById('vlm-description').textContent = f.scene_description || '—';
+  } catch(e) { console.error(e); }
+}
+
+/* ── Q&A ──────────────────────────────────────────────────────────────── */
+async function sendQA() {
+  const q = document.getElementById('qa-input').value.trim();
+  if (!q) return;
+  const ans = document.getElementById('qa-answer');
+  ans.innerHTML = '<span class="qa-thinking">Processing query…</span>';
+  try {
+    const r = await fetch(`${API}/api/qa`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ question: q }),
+    });
+    const d = await r.json();
+    ans.textContent = d.answer || d.detail || 'No answer.';
+  } catch(e) { ans.textContent = `Error: ${e.message}`; }
+}
+
+/* ── Summary ──────────────────────────────────────────────────────────── */
+async function getSummary() {
+  document.getElementById('summary-text').textContent = 'Generating…';
+  try {
+    const r = await fetch(`${API}/api/summarize`, { method:'POST' });
+    const d = await r.json();
+    document.getElementById('summary-text').textContent = d.summary || '—';
+  } catch(e) { document.getElementById('summary-text').textContent = 'Error: ' + e.message; }
+}
+
+/* ── Health polling ───────────────────────────────────────────────────── */
+async function pollHealth() {
+  try {
+    const r = await fetch(`${API}/api/health`);
+    const h = await r.json();
+    document.getElementById('client-count').textContent = h.sse_clients ?? '—';
+    if (h.simulation_running !== simRunning) setSimUI(h.simulation_running);
+  } catch { /* ignore */ }
+  setTimeout(pollHealth, 5000);
+}
+
+/* ── Utils ────────────────────────────────────────────────────────────── */
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/* ── Keyboard shortcuts ───────────────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target === document.getElementById('search-input')) searchFrames();
+  if (e.key === 'Enter' && e.ctrlKey && e.target === document.getElementById('qa-input')) sendQA();
+});
+
+/* ── Init ─────────────────────────────────────────────────────────────── */
+connectSSE();
+</script>
+</body>
+</html>
