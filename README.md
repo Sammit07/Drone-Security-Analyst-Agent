@@ -2,47 +2,7 @@
 
 An end-to-end autonomous drone surveillance system. Synthetic (or real video) frames are analysed by **GPT-4o-mini Vision**, reasoned over by a **stateful GPT-4o-mini security agent**, persisted in **SQLite**, and streamed live to a **dark tactical browser dashboard** via Server-Sent Events.
 
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   FastAPI Server  :8000                      │
-│                                                             │
-│  POST /api/simulate/start  ──►  Simulation Loop (async)     │
-│  POST /api/video/upload    ──►  Video Frame Extractor       │
-│                                        │                    │
-│                          ┌─────────────▼──────────────┐    │
-│                          │  OpenCV Frame Generator     │    │
-│                          │  640 × 360 PNG  (30 frames) │    │
-│                          └─────────────┬──────────────┘    │
-│                                        │                    │
-│                          ┌─────────────▼──────────────┐    │
-│                          │  GPT-4o-mini Vision (VLM)   │    │
-│                          │  PNG → structured JSON       │    │
-│                          └─────────────┬──────────────┘    │
-│                                        │                    │
-│                          ┌─────────────▼──────────────┐    │
-│                          │  Security Agent             │    │
-│                          │  GPT-4o-mini + sliding      │    │
-│                          │  conversation window (k=20) │    │
-│                          └─────────────┬──────────────┘    │
-│                                        │                    │
-│                 ┌──────────────────────▼───────────┐       │
-│                 │  SQLite (WAL mode) · 6 tables     │       │
-│                 └──────────────────────┬───────────┘       │
-│                                        │                    │
-│  GET /api/stream  ◄────── SSE broadcast per frame          │
-└────────────────────────────────────────────────────────────┘
-                            │
-               ┌────────────▼────────────┐
-               │  Browser Dashboard      │
-               │  Dark Tactical UI       │
-               │  Live feed · Reasoning  │
-               │  Alerts · Q&A · Telem   │
-               └─────────────────────────┘
-```
+<img width="1900" height="876" alt="Screenshot 2026-04-18 134819" src="https://github.com/user-attachments/assets/adfb4322-dc10-4ffe-89a5-a4204ddc2bb2" />
 
 ---
 
