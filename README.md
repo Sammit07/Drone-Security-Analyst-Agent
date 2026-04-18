@@ -1,6 +1,6 @@
 # Drone Security Analyst Agent
 
-An end-to-end autonomous drone surveillance system. Synthetic (or real video) frames are analysed by **GPT-4o-mini Vision**, reasoned over by a **stateful GPT-4o-mini security agent**, persisted in **SQLite**, and streamed live to a **dark tactical browser dashboard** via Server-Sent Events.
+An end-to-end autonomous drone surveillance system. Video frames are analysed by **GPT-4o-mini Vision**, reasoned over by a **stateful GPT-4o-mini security agent**, persisted in **SQLite**, and streamed live to a **dashboard** via Server-Sent Events.
 
 <img width="1900" height="876" alt="Screenshot 2026-04-18 134819" src="https://github.com/user-attachments/assets/adfb4322-dc10-4ffe-89a5-a4204ddc2bb2" />
 
